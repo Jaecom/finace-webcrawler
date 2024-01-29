@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 from util import getSoup
+from typing import TypedDict
 
 
 def calculateSrimPrice(rawCode: str, decreaseRatio: list[float]):
@@ -9,16 +10,9 @@ def calculateSrimPrice(rawCode: str, decreaseRatio: list[float]):
 
     # expectedReturn = findExpectedReturn()
     expectedReturn = 10.68
-    roes = findRoe(soup)
-    weightedRoe = calculateWeightedRoe(
-        [
-            roes.get("roe-previous-y3"),
-            roes.get("roe-previous-y2"),
-            roes.get("roe-previous-y1"),
-        ]
-    )
+    row_type, roe = findRoe(soup)
 
-    if weightedRoe < expectedReturn:
+    if roe < expectedReturn:
         return None
 
     controllingEquity = findControllingEquity(soup).get("control-eq-previous-y1")
@@ -26,7 +20,7 @@ def calculateSrimPrice(rawCode: str, decreaseRatio: list[float]):
     shares = calculateFloatingShares(soup, code)
     name = findName(soup)
 
-    excess_profit = (weightedRoe - expectedReturn) / 100 * controllingEquity
+    excess_profit = (roe - expectedReturn) / 100 * controllingEquity
     reasonable_stock_prices_list = [
         format(
             round(
@@ -43,7 +37,8 @@ def calculateSrimPrice(rawCode: str, decreaseRatio: list[float]):
 
     return {
         "name": name,
-        "weighted-roe": weightedRoe,
+        "roe": roe,
+        "roe-type": row_type,
         "expected-return": expectedReturn,
         "price": format(price, ","),
         "stock-prices": reasonable_stock_prices_list,
@@ -65,7 +60,7 @@ def findRoe(soup: BeautifulSoup):
     td = tr.find_all("td", class_="r")
     td_texts = [convertFloat(item.text) for item in td]
 
-    return {
+    roes = {
         "roe-previous-y3": td_texts[0],
         "roe-previous-y2": td_texts[1],
         "roe-previous-y1": td_texts[2],
@@ -76,10 +71,26 @@ def findRoe(soup: BeautifulSoup):
         "roe-current-q4": td_texts[7],
     }
 
+    type, roe = calculateRoe(
+        [
+            roes.get("roe-previous-y3"),
+            roes.get("roe-previous-y2"),
+            roes.get("roe-previous-y1"),
+        ]
+    )
 
-def calculateWeightedRoe(roes: dict):
-    result = (roes[0] * 1 + roes[1] * 2 + roes[2] * 3) / 6
-    return round(result, 2)
+    return type, roe
+
+
+def calculateRoe(roes: dict) -> tuple[str, float]:
+    if roes[0] == roes[1] == roes[2]:
+        return "N", roes[2]
+
+    if (roes[0] < roes[1] < roes[2]) or (roes[0] > roes[1] > roes[2]):
+        return "N", roes[2]
+
+    weighted_row = round((roes[0] * 1 + roes[1] * 2 + roes[2] * 3) / 6, 2)
+    return "W", weighted_row
 
 
 def findControllingEquity(soup: BeautifulSoup):

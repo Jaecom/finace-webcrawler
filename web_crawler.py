@@ -1,7 +1,7 @@
 from srim import calculateSrimPrice
 from prettytable import PrettyTable
 
-decreaseRatio = [1, 0.9, 0.8, 0.5]
+decrease_ratio = [0.8, 0.9, 1]
 
 stock_codes = [
     "005930",
@@ -58,26 +58,33 @@ stock_codes = [
 
 stock_price_labels = [
     "적정주가" if ratio == 1 else f"적정주가 ({(round(1 - ratio, 1) * 100)}% 씩 감소)"
-    for ratio in decreaseRatio
+    for ratio in decrease_ratio
 ]
 
 table = PrettyTable()
 
 table.field_names = [
+    "코드",
     "주식이름",
-    "가중 ROE",
+    "ROE",
     "기대수익률",
     "현재주가",
 ] + stock_price_labels
 
 for code in stock_codes:
-    srim = calculateSrimPrice(code, decreaseRatio)
+    srim = calculateSrimPrice(code, decrease_ratio)
 
     if srim is None:
         continue
 
     table.add_row(
-        [srim["name"], srim["weighted-roe"], srim["expected-return"], srim["price"]]
+        [
+            code,
+            srim["name"],
+            str(srim["roe"]) + "(W)" if srim["roe-type"] == "W" else srim["roe"],
+            srim["expected-return"],
+            srim["price"],
+        ]
         + srim["stock-prices"]
     )
 
