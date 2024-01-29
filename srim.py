@@ -1,14 +1,14 @@
 from bs4 import BeautifulSoup
 from util import getSoup
 
-decreaseRatio = [1, 0.9, 0.8, 0.5]
 
-
-def calculateSrimPrice(rawCode: str):
+def calculateSrimPrice(rawCode: str, decreaseRatio: list[float]):
     code = f"A{rawCode}"
     url = f"https://comp.fnguide.com/SVO2/asp/SVD_Main.asp?pGB=1&gicode={code}&cID=&MenuYn=Y&ReportGB=&NewMenuID=101&stkGb=701"
     soup = getSoup(url)
 
+    # expectedReturn = findExpectedReturn()
+    expectedReturn = 10.68
     roes = findRoe(soup)
     weightedRoe = calculateWeightedRoe(
         [
@@ -18,12 +18,13 @@ def calculateSrimPrice(rawCode: str):
         ]
     )
 
+    if weightedRoe < expectedReturn:
+        return None
+
     controllingEquity = findControllingEquity(soup).get("control-eq-previous-y1")
     price = findPrice(soup)
     shares = calculateFloatingShares(soup, code)
     name = findName(soup)
-    # expectedReturn = findExpectedReturn()
-    expectedReturn = 10.68
 
     excess_profit = (weightedRoe - expectedReturn) / 100 * controllingEquity
     reasonable_stock_prices_list = [
