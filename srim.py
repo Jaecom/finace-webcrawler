@@ -1,21 +1,53 @@
 from bs4 import BeautifulSoup
 from util import getSoup
 
-
-def convertInt(text: str):
-    if text == "\xa0":
-        return -1
-
-    str = text.replace(",", "")
-    return int(str)
+decreaseRatio = [1, 0.9, 0.8, 0.5]
 
 
-def convertFloat(text: str):
-    if text == "\xa0":
-        return -1
+def calculateSrimPrice(rawCode: str):
+    code = f"A{rawCode}"
+    url = f"https://comp.fnguide.com/SVO2/asp/SVD_Main.asp?pGB=1&gicode={code}&cID=&MenuYn=Y&ReportGB=&NewMenuID=101&stkGb=701"
+    soup = getSoup(url)
 
-    str = text.replace(",", "")
-    return float(str)
+    roes = findRoe(soup)
+    weightedRoe = calculateWeightedRoe(
+        [
+            roes.get("roe-previous-y3"),
+            roes.get("roe-previous-y2"),
+            roes.get("roe-previous-y1"),
+        ]
+    )
+
+    controllingEquity = findControllingEquity(soup).get("control-eq-previous-y1")
+    price = findPrice(soup)
+    shares = calculateFloatingShares(soup, code)
+    name = findName(soup)
+    # expectedReturn = findExpectedReturn()
+    expectedReturn = 10.68
+
+    excess_profit = (weightedRoe - expectedReturn) / 100 * controllingEquity
+    reasonable_stock_prices_list = [
+        format(
+            round(
+                (
+                    controllingEquity
+                    + excess_profit * (ratio / (1 + expectedReturn / 100 - ratio))
+                )
+                / shares
+            ),
+            ",",
+        )
+        for ratio in decreaseRatio
+    ]
+
+    return {
+        "name": name,
+        "weighted-roe": weightedRoe,
+        "expected-return": expectedReturn,
+        "price": format(price, ","),
+        "stock-prices": reasonable_stock_prices_list,
+        "decrease-ratios": decreaseRatio,
+    }
 
 
 def findName(soup: BeautifulSoup):
@@ -79,15 +111,31 @@ def findExpectedReturn():
     return float(td.text)
 
 
-def getCompanyOwnedShares(code: str):
+def calculateFloatingShares(soup: BeautifulSoup, code: str):
+    tr = soup.find("div", string="발행주식수").find_parent("tr").find_all("td", class_="r")
+    totalShares = [convertInt(item.text) * 1000 for item in tr]
+    companyOwnedShares = findCompanyOwnedShares(code)
+    return totalShares[2] - companyOwnedShares
+
+
+def findCompanyOwnedShares(code: str):
     url = f"https://comp.fnguide.com/SVO2/asp/SVD_shareanalysis.asp?pGB=1&gicode={code}&cID=&MenuYn=Y&ReportGB=&NewMenuID=109&stkGb=701"
     soup = getSoup(url)
     tds = soup.find("div", string="자기주식 (자사주+자사주신탁)").find_parent("tr").find_all("td")
     return convertInt(tds[1].text)
 
 
-def findNumberOfShares(soup: BeautifulSoup, code: str):
-    tr = soup.find("div", string="발행주식수").find_parent("tr").find_all("td", class_="r")
-    totalShares = [convertInt(item.text) * 1000 for item in tr]
-    companyOwnedShares = getCompanyOwnedShares(code)
-    return totalShares[2] - companyOwnedShares
+def convertInt(text: str):
+    if text == "\xa0":
+        return -1
+
+    str = text.replace(",", "")
+    return int(str)
+
+
+def convertFloat(text: str):
+    if text == "\xa0":
+        return -1
+
+    str = text.replace(",", "")
+    return float(str)
