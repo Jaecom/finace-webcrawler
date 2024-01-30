@@ -1,5 +1,9 @@
 from srim import calculateSrimPrice
 from prettytable import PrettyTable
+import time
+
+start_time = time.time()
+
 
 decrease_ratio = [0.8, 0.9, 1]
 
@@ -89,3 +93,9 @@ for code in stock_codes:
     )
 
 print(table)
+
+
+end_time = time.time()
+execution_time = end_time - start_time
+
+print("Execution time:", execution_time, "seconds")
