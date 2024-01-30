@@ -45,7 +45,7 @@ def calculateSrimPrice(rawCode: str, decreaseRatio: list[float], expectedReturn:
 
 
 def findName(soup: BeautifulSoup):
-    return soup.find("h1", id="giName").text
+    return soup.select_one("div.ul_corpinfo h1#giName").text
 
 
 def findPrice(soup: BeautifulSoup):
