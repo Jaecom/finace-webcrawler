@@ -7,15 +7,16 @@ def calculateSrimPrice(rawCode: str, decreaseRatio: list[float], expectedReturn:
     code = f"A{rawCode}"
     url = f"https://comp.fnguide.com/SVO2/asp/SVD_Main.asp?pGB=1&gicode={code}&cID=&MenuYn=Y&ReportGB=&NewMenuID=101&stkGb=701"
     soup = getSoup(url)
+    chart_soup = soup.select_one("div#highlight_D_A")
 
-    row_type, roe = findRoe(soup)
+    row_type, roe = findRoe(chart_soup)
 
     if roe < expectedReturn:
         return None
 
-    controllingEquity = findControllingEquity(soup).get("control-eq-previous-y1")
+    controllingEquity = findControllingEquity(chart_soup).get("control-eq-previous-y1")
+    shares = calculateFloatingShares(chart_soup, code)
     price = findPrice(soup)
-    shares = calculateFloatingShares(soup, code)
     name = findName(soup)
 
     excess_profit = (roe - expectedReturn) / 100 * controllingEquity
@@ -45,17 +46,17 @@ def calculateSrimPrice(rawCode: str, decreaseRatio: list[float], expectedReturn:
 
 
 def findName(soup: BeautifulSoup):
-    return soup.find("h1", id="giName").text
+    return soup.select_one("div.ul_corpinfo h1#giName").text
 
 
 def findPrice(soup: BeautifulSoup):
-    span = soup.find("span", id="svdMainChartTxt11")
+    span = soup.select_one("div.ul_3colgf li div span#svdMainChartTxt11")
     return convertInt(span.text)
 
 
-def findRoe(soup: BeautifulSoup):
-    tr = soup.find("span", class_="txt_acd", string="ROE").find_parent("tr")
-    td = tr.find_all("td", class_="r")
+def findRoe(chart_soup: BeautifulSoup):
+    tr = chart_soup.select_one('tr:has(a span.txt_acd:-soup-contains("ROE"))')
+    td = tr.select("td.r")
     td_texts = [convertFloat(item.text) for item in td]
 
     roes = {
@@ -91,11 +92,9 @@ def calculateRoe(roes: dict) -> tuple[str, float]:
     return "W", weighted_row
 
 
-def findControllingEquity(soup: BeautifulSoup):
-    tr = (
-        soup.find("div", string="  지배주주지분").find_parent("tr").find_all("td", class_="r")
-    )
-    equity_values = [convertInt(item.text) * 100000000 for item in tr]
+def findControllingEquity(chart_soup: BeautifulSoup):
+    tds = chart_soup.select('tr:has(div:-soup-contains("  지배주주지분")) td.r')
+    equity_values = [convertInt(item.text) * 100000000 for item in tds]
 
     return {
         "control-eq-previous-y3": equity_values[0],
@@ -112,18 +111,15 @@ def findControllingEquity(soup: BeautifulSoup):
 def findExpectedReturn():
     url = "https://kisrating.com/ratingsStatistics/statics_spread.do"
     soup = getSoup(url)
-    trs = (
-        soup.find("tbody")
-        .find("td", class_="fc_blue_dk", string="BBB-")
-        .find_parent("tr")
+    tds = soup.select(
+        "div#con_tab1 tbody tr:has(td.fc_blue_dk:-soup-contains('BBB-')) td"
     )
-    td = trs.find_all("td")[-1]
-    return float(td.text)
+    return float(tds[-1].text)
 
 
-def calculateFloatingShares(soup: BeautifulSoup, code: str):
-    tr = soup.find("div", string="발행주식수").find_parent("tr").find_all("td", class_="r")
-    totalShares = [convertInt(item.text) * 1000 for item in tr]
+def calculateFloatingShares(chart_soup: BeautifulSoup, code: str):
+    tds = chart_soup.select('tr:has(div:-soup-contains("발행주식수")) td.r')
+    totalShares = [convertInt(item.text) * 1000 for item in tds]
     companyOwnedShares = findCompanyOwnedShares(code)
     return totalShares[2] - companyOwnedShares
 
@@ -131,13 +127,16 @@ def calculateFloatingShares(soup: BeautifulSoup, code: str):
 def findCompanyOwnedShares(code: str):
     url = f"https://comp.fnguide.com/SVO2/asp/SVD_shareanalysis.asp?pGB=1&gicode={code}&cID=&MenuYn=Y&ReportGB=&NewMenuID=109&stkGb=701"
     soup = getSoup(url)
-    tds = soup.find("div", string="자기주식 (자사주+자사주신탁)").find_parent("tr").find_all("td")
-    return convertInt(tds[1].text)
+    tds = soup.select(
+        'table#dataTable tr:has(div:-soup-contains("자기주식 (자사주+자사주신탁)")) td'
+    )
+    shares = convertInt(tds[1].text)
+    return shares
 
 
 def convertInt(text: str):
     if text == "\xa0":
-        return -1
+        return 0
 
     str = text.replace(",", "")
     return int(str)
@@ -145,7 +144,7 @@ def convertInt(text: str):
 
 def convertFloat(text: str):
     if text == "\xa0":
-        return -1
+        return 0
 
     str = text.replace(",", "")
     return float(str)

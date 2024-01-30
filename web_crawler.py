@@ -1,10 +1,13 @@
 from srim import calculateSrimPrice
 from prettytable import PrettyTable
+from srim import findExpectedReturn
 import time
+
 
 start_time = time.time()
 
-expectedReturn = 10.68
+expectedReturn = findExpectedReturn()
+
 decrease_ratio = [0.8, 0.9, 1]
 
 stock_codes = [
