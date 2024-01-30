@@ -4,7 +4,7 @@ import time
 
 start_time = time.time()
 
-
+expectedReturn = 10.68
 decrease_ratio = [0.8, 0.9, 1]
 
 stock_codes = [
@@ -76,7 +76,7 @@ table.field_names = [
 ] + stock_price_labels
 
 for code in stock_codes:
-    srim = calculateSrimPrice(code, decrease_ratio)
+    srim = calculateSrimPrice(code, decrease_ratio, expectedReturn)
 
     if srim is None:
         continue

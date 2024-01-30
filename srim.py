@@ -3,13 +3,11 @@ from util import getSoup
 from typing import TypedDict
 
 
-def calculateSrimPrice(rawCode: str, decreaseRatio: list[float]):
+def calculateSrimPrice(rawCode: str, decreaseRatio: list[float], expectedReturn: float):
     code = f"A{rawCode}"
     url = f"https://comp.fnguide.com/SVO2/asp/SVD_Main.asp?pGB=1&gicode={code}&cID=&MenuYn=Y&ReportGB=&NewMenuID=101&stkGb=701"
     soup = getSoup(url)
 
-    # expectedReturn = findExpectedReturn()
-    expectedReturn = 10.68
     row_type, roe = findRoe(soup)
 
     if roe < expectedReturn:
