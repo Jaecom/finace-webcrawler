@@ -1,69 +1,27 @@
 from srim import calculateSrimPrice
 from prettytable import PrettyTable
-from srim import findExpectedReturn
+from util import findExpectedReturn
 import time
+from stock_code import stock_codes
 
 
 start_time = time.time()
 
-expectedReturn = findExpectedReturn()
-
-decrease_ratio = [0.8, 0.9, 1]
-
 stock_codes = [
     "005930",
-    "373220",
     "000660",
+    "373220",
     "207940",
-    "035420",
-    "051910",
     "005380",
-    "006400",
-    "035720",
     "000270",
-    "005490",
-    "105560",
-    "096770",
     "068270",
-    "028260",
-    "055550",
-    "012330",
-    "323410",
-    "034730",
-    "066570",
-    "015760",
-    "010950",
-    "086790",
-    "259960",
-    "032830",
-    "003550",
-    "017670",
-    "033780",
-    "377300",
-    "009150",
-    "018260",
-    "316140",
-    "010130",
-    "051900",
-    "003670",
-    "036570",
-    "030200",
-    "000810",
-    "302440",
-    "352820",
-    "090430",
-    "024110",
-    "361610",
-    "086280",
-    "011170",
-    "251270",
-    "009540",
-    "326030",
-    "034220",
-    "018880",
 ]
+expectedReturn = findExpectedReturn()
+# expectedReturn = 10.66
 
-stock_price_labels = [
+decrease_ratio = [0.8, 1]
+
+expected_price_labels = [
     "적정주가" if ratio == 1 else f"적정주가 ({(round(1 - ratio, 1) * 100)}% 씩 감소)"
     for ratio in decrease_ratio
 ]
@@ -74,9 +32,9 @@ table.field_names = [
     "코드",
     "주식이름",
     "ROE",
-    "기대수익률",
+    "PER",
     "현재주가",
-] + stock_price_labels
+] + expected_price_labels
 
 for code in stock_codes:
     srim = calculateSrimPrice(code, decrease_ratio, expectedReturn)
@@ -84,17 +42,49 @@ for code in stock_codes:
     if srim is None:
         continue
 
+    current_price, expected_prices, per, roe = (
+        srim["current-price"],
+        srim["expected-prices"],
+        srim["per"],
+        srim["roe"],
+    )
+
+    ratio_threshold_index = decrease_ratio.index(0.8)
+
+    if current_price > expected_prices[ratio_threshold_index]:
+        continue
+
+    if per > 10:
+        continue
+
+    expected_return_str = str(expectedReturn) + "%"
+    roe_str = str(roe)
+    roe_format_str = (
+        roe_str
+        + "%"
+        + (" (W)" if srim["roe-type"] == "W" else "    ")
+        + (" (C)" if srim["roe-current"] else "    ")
+    )
+    current_price_str = format(current_price, ",")
+    expected_prices_str = [
+        format(price, ",")
+        + (f" ({str(round(current_price / price * 100))})%" if index == 0 else "")
+        for index, price in enumerate(expected_prices)
+    ]
+    per_str = str(per)
+
     table.add_row(
         [
             code,
             srim["name"],
-            str(srim["roe"]) + "(W)" if srim["roe-type"] == "W" else srim["roe"],
-            srim["expected-return"],
-            srim["price"],
+            roe_format_str,
+            per_str,
+            current_price_str,
         ]
-        + srim["stock-prices"]
+        + expected_prices_str
     )
 
+print("기대 수익률(BBB-):", expected_return_str)
 print(table)
 
 
