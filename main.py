@@ -1,23 +1,14 @@
 from srim import calculateSrimPrice
 from prettytable import PrettyTable
 from util import findExpectedReturn
-import time
-from stock_code import stock_codes
+from kospi_200_codes import kospi_stock_codes
 
 
-start_time = time.time()
-
-stock_codes = [
-    "005930",
-    "000660",
-    "373220",
-    "207940",
-    "005380",
-    "000270",
-    "068270",
-]
-expectedReturn = findExpectedReturn()
-# expectedReturn = 10.66
+# stock_codes = [
+#     "000270",
+# ]
+# expectedReturn = findExpectedReturn()
+expectedReturn = 10.53
 
 decrease_ratio = [0.8, 1]
 
@@ -31,25 +22,41 @@ table = PrettyTable()
 table.field_names = [
     "코드",
     "주식이름",
+    "분야",
     "ROE",
     "PER",
     "현재주가",
 ] + expected_price_labels
 
-for code in stock_codes:
+for code in kospi_stock_codes:
     srim = calculateSrimPrice(code, decrease_ratio, expectedReturn)
 
     if srim is None:
         continue
 
-    current_price, expected_prices, per, roe = (
+    (
+        current_price,
+        expected_prices,
+        per,
+        roe,
+        roe_type,
+        roe_current,
+        roe_trend,
+        industry,
+        name,
+    ) = (
         srim["current-price"],
         srim["expected-prices"],
         srim["per"],
         srim["roe"],
+        srim["roe-type"],
+        srim["roe-is-current"],
+        srim["roe-trend"],
+        srim["industry"],
+        srim["name"],
     )
 
-    ratio_threshold_index = decrease_ratio.index(0.8)
+    ratio_threshold_index = decrease_ratio.index(1)
 
     if current_price > expected_prices[ratio_threshold_index]:
         continue
@@ -62,8 +69,7 @@ for code in stock_codes:
     roe_format_str = (
         roe_str
         + "%"
-        + (" (W)" if srim["roe-type"] == "W" else "    ")
-        + (" (C)" if srim["roe-current"] else "    ")
+        + (" ↑" if roe_trend == "UP" else " ↓" if roe_trend == "DOWN" else "  ")
     )
     current_price_str = format(current_price, ",")
     expected_prices_str = [
@@ -76,7 +82,8 @@ for code in stock_codes:
     table.add_row(
         [
             code,
-            srim["name"],
+            name,
+            industry,
             roe_format_str,
             per_str,
             current_price_str,
@@ -86,9 +93,3 @@ for code in stock_codes:
 
 print("기대 수익률(BBB-):", expected_return_str)
 print(table)
-
-
-end_time = time.time()
-execution_time = end_time - start_time
-
-print("Execution time:", execution_time, "seconds")

@@ -9,7 +9,7 @@ def calculateSrimPrice(rawCode: str, decreaseRatio: list[float], expectedReturn:
     soup = getSoup(url)
     chart_soup = soup.select_one("div#highlight_D_A")
 
-    row_type, roe, roe_current = findRoe(chart_soup)
+    roe, row_type, roe_is_current, roe_trend = findRoe(chart_soup)
 
     if roe < expectedReturn:
         return None
@@ -19,6 +19,7 @@ def calculateSrimPrice(rawCode: str, decreaseRatio: list[float], expectedReturn:
     price = findPrice(soup)
     name = findName(soup)
     per = findPER(soup)
+    industry = findIndustry(soup)
 
     excess_profit = (roe - expectedReturn) / 100 * controllingEquity
     reasonable_stock_prices_list = [
@@ -36,13 +37,15 @@ def calculateSrimPrice(rawCode: str, decreaseRatio: list[float], expectedReturn:
         "name": name,
         "roe": roe,
         "roe-type": row_type,
-        "roe-current": roe_current,
+        "roe-is-current": roe_is_current,
+        "roe-trend": roe_trend,
         "expected-return": expectedReturn,
         "current-price": price,
         "expected-prices": reasonable_stock_prices_list,
         "decrease-ratios": decreaseRatio,
         "shares": shares,
         "per": per,
+        "industry": industry,
     }
 
 
@@ -53,6 +56,13 @@ def findName(soup: BeautifulSoup):
 def findPrice(soup: BeautifulSoup):
     span = soup.select_one("div.ul_3colgf li div span#svdMainChartTxt11")
     return convertInt(span.text)
+
+
+def findIndustry(soup: BeautifulSoup):
+    span = soup.select_one("p.stxt_group")
+    industry = span.select_one("span.stxt2").text
+    industry = industry.replace("FICS ", "")
+    return industry
 
 
 def findPER(soup: BeautifulSoup):
@@ -91,20 +101,23 @@ def findRoe(chart_soup: BeautifulSoup):
             roes.get("roe-current-y"),
         ]
 
-    type, roe = calculateRoe(roe_list)
+    roe, type, roe_trend = calculateRoe(roe_list)
 
-    return type, roe, is_current
+    return roe, type, is_current, roe_trend
 
 
 def calculateRoe(roes: dict) -> tuple[str, float]:
     if roes[0] == roes[1] == roes[2]:
-        return "N", roes[2]
+        return roes[2], "N", "-"
 
-    if (roes[0] < roes[1] < roes[2]) or (roes[0] > roes[1] > roes[2]):
-        return "N", roes[2]
+    if roes[0] < roes[1] < roes[2]:
+        return roes[2], "N", "UP"
+
+    if roes[0] > roes[1] > roes[2]:
+        return roes[2], "N", "DOWN"
 
     weighted_row = round((roes[0] * 1 + roes[1] * 2 + roes[2] * 3) / 6, 2)
-    return "W", weighted_row
+    return (weighted_row, "W", "-")
 
 
 def findControllingEquity(chart_soup: BeautifulSoup):

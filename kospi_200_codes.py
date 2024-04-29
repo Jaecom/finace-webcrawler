@@ -1,4 +1,4 @@
-stock_codes = [
+kospi_stock_codes = [
     "005930",
     "000660",
     "373220",
