@@ -1,14 +1,18 @@
-from srim import calculateSrimPrice
+import sys
+
+sys.path.append("src")
+
+from src.srim import calculateSrimPrice
 from prettytable import PrettyTable
-from util import findExpectedReturn
-from kospi_200_codes import kospi_stock_codes
+from src.util import findExpectedReturn
+from src.kospi_200_codes import kospi_stock_codes
+from src.low_per_industry_code import low_per_industry
 
 
-# stock_codes = [
-#     "000270",
-# ]
-# expectedReturn = findExpectedReturn()
-expectedReturn = 10.53
+LIST_TO_TEST = low_per_industry
+
+expectedReturn = findExpectedReturn()
+# expectedReturn = 10.53
 
 decrease_ratio = [0.8, 1]
 
@@ -28,7 +32,7 @@ table.field_names = [
     "현재주가",
 ] + expected_price_labels
 
-for code in kospi_stock_codes:
+for code in LIST_TO_TEST:
     srim = calculateSrimPrice(code, decrease_ratio, expectedReturn)
 
     if srim is None:
